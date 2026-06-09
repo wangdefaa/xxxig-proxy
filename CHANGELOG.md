@@ -1,4 +1,8 @@
 # v6.26.0
+
+## 改造版（无捐献）
+- **彻底移除开发者捐献（dev-fee）**：删除 `DonateStrategy` 与 proxy 专有的 `DonateSplitter` / `DonateMapper`，清理 `donate-level` / `donate-over-proxy` 配置项、命令行选项及 API 的 `donate_level` / `donated` / `hashes_donate` 字段，代理不再向作者钱包分流任何算力。
+
 - [#598](https://github.com/xmrig/xmrig-proxy/pull/598) **Added support for RandomX v2.**
 - [#590](https://github.com/xmrig/xmrig-proxy/pull/590) Solo mining: added support for FCMP++ hardfork.
 - [#597](https://github.com/xmrig/xmrig-proxy/pull/597) Fixed keepalive timer logic.

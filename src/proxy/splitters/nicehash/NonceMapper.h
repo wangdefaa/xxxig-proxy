@@ -40,7 +40,6 @@ namespace xmrig {
 
 
 class Controller;
-class DonateStrategy;
 class IStrategy;
 class JobResult;
 class Miner;
@@ -100,7 +99,6 @@ private:
     void suspend();
 
     Controller *m_controller;
-    DonateStrategy *m_donate    = nullptr;
     int m_suspended             = 0;
     IStrategy *m_pending        = nullptr;
     IStrategy *m_strategy;

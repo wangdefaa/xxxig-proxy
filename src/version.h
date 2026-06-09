@@ -8,13 +8,13 @@
 #ifndef XMRIG_VERSION_H
 #define XMRIG_VERSION_H
 
-#define APP_ID        "xmrig-proxy"
-#define APP_NAME      "xmrig-proxy"
-#define APP_DESC      "XMRig Stratum proxy"
+#define APP_ID        "xxxig-proxy"
+#define APP_NAME      "xxxig-proxy"
+#define APP_DESC      "XXXig Stratum proxy"
 #define APP_VERSION   "6.26.0"
-#define APP_DOMAIN    "xmrig.com"
-#define APP_SITE      "www.xmrig.com"
-#define APP_COPYRIGHT "Copyright (C) 2016-2026 xmrig.com"
+#define APP_DOMAIN    ""
+#define APP_SITE      ""
+#define APP_COPYRIGHT "Copyright (C) 2016-2026"
 #define APP_KIND      "proxy"
 
 #define APP_VER_MAJOR  6

@@ -29,14 +29,13 @@
     "colors": true,
     "custom-diff": 0,
     "custom-diff-stats": false,
-    "donate-level": 0,
     "log-file": null,
     "mode": "nicehash",
     "pools": [
         {
             "algo": null,
             "coin": null,
-            "url": "donate.v2.xmrig.com:5555",
+            "url": "localhost:5555",
             "user": "YOUR_WALLET",
             "pass": "x",
             "rig-id": null,
@@ -69,7 +68,7 @@
     },
     "user-agent": null,
     "syslog": false,
-    "verbose": false,
+    "verbose": true,
     "watch": true,
     "workers": true
 }

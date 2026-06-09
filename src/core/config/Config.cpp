@@ -21,7 +21,6 @@
 #include "base/io/log/Log.h"
 #include "base/kernel/interfaces/IJsonReader.h"
 #include "base/net/dns/Dns.h"
-#include "donate.h"
 
 
 #include <array>
@@ -130,7 +129,6 @@ void xmrig::Config::getJSON(rapidjson::Document &doc) const
     doc.AddMember(StringRef(kColors),               Log::isColors(), allocator);
     doc.AddMember("custom-diff",                    diff(), allocator);
     doc.AddMember("custom-diff-stats",              m_customDiffStats, allocator);
-    doc.AddMember(StringRef(Pools::kDonateLevel),   m_pools.donateLevel(), allocator);
     doc.AddMember(StringRef(kLogFile),              m_logFile.toJSON(), allocator);
     doc.AddMember("mode",                           StringRef(modeName()), allocator);
     doc.AddMember(StringRef(Pools::kPools),         m_pools.toJSON(doc), allocator);

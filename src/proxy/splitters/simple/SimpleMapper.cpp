@@ -25,12 +25,12 @@
 #include "proxy/splitters/simple/SimpleMapper.h"
 #include "base/io/log/Log.h"
 #include "base/io/log/Tags.h"
+#include "base/kernel/interfaces/IStrategy.h"
 #include "base/net/stratum/Client.h"
 #include "base/net/stratum/Pools.h"
 #include "core/config/Config.h"
 #include "core/Controller.h"
 #include "net/JobResult.h"
-#include "net/strategies/DonateStrategy.h"
 #include "proxy/Counters.h"
 #include "proxy/Error.h"
 #include "proxy/events/AcceptEvent.h"
@@ -53,7 +53,6 @@ xmrig::SimpleMapper::~SimpleMapper()
 {
     delete m_pending;
     delete m_strategy;
-    delete m_donate;
 }
 
 
@@ -100,10 +99,6 @@ void xmrig::SimpleMapper::stop()
     if (m_pending) {
         m_pending->stop();
     }
-
-    if (m_donate) {
-        m_donate->stop();
-    }
 }
 
 
@@ -124,10 +119,8 @@ void xmrig::SimpleMapper::submit(SubmitEvent *event)
     JobResult req = event->request;
     req.diff = m_job.diff();
 
-    IStrategy *strategy = m_donate && m_donate->isActive() ? m_donate : m_strategy;
-
-    if (strategy) {
-        strategy->submit(req);
+    if (m_strategy) {
+        m_strategy->submit(req);
     }
 }
 
@@ -138,10 +131,6 @@ void xmrig::SimpleMapper::tick(uint64_t, uint64_t now)
 
     if (!m_miner) {
         m_idleTime++;
-    }
-
-    if (m_donate) {
-        m_donate->tick(now);
     }
 }
 
@@ -182,10 +171,6 @@ void xmrig::SimpleMapper::onJob(IStrategy *, IClient *client, const Job &job, co
                  Tags::network(), m_id, client->pool().host().data(), client->pool().port(), job.diff(), job.algorithm().name(), job.height());
     }
 
-    if (m_donate && m_donate->isActive() && client->id() != -1 && !m_donate->reschedule()) {
-        return;
-    }
-
     setJob(job);
 }
 
@@ -204,9 +189,9 @@ void xmrig::SimpleMapper::onPause(IStrategy *strategy)
 }
 
 
-void xmrig::SimpleMapper::onResultAccepted(IStrategy *, IClient *client, const SubmitResult &result, const char *error)
+void xmrig::SimpleMapper::onResultAccepted(IStrategy *, IClient *, const SubmitResult &result, const char *error)
 {
-    AcceptEvent::start(m_id, m_miner, result, client->id() == -1, false, error);
+    AcceptEvent::start(m_id, m_miner, result, false, error);
 
     if (!m_miner) {
         return;
@@ -245,10 +230,6 @@ bool xmrig::SimpleMapper::isValidJobId(const String &id) const
 void xmrig::SimpleMapper::connect()
 {
     m_strategy->connect();
-
-    if (m_donate) {
-        m_donate->connect();
-    }
 }
 
 

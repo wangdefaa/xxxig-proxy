@@ -1,105 +1,44 @@
-# XMRig Proxy
-[![Github All Releases](https://img.shields.io/github/downloads/xmrig/xmrig-proxy/total.svg)](https://github.com/xmrig/xmrig-proxy/releases)
-[![GitHub release](https://img.shields.io/github/release/xmrig/xmrig-proxy/all.svg)](https://github.com/xmrig/xmrig-proxy/releases)
-[![GitHub Release Date](https://img.shields.io/github/release-date-pre/xmrig/xmrig-proxy.svg)](https://github.com/xmrig/xmrig-proxy/releases)
-[![GitHub license](https://img.shields.io/github/license/xmrig/xmrig-proxy.svg)](https://github.com/xmrig/xmrig-proxy/blob/master/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/xmrig/xmrig-proxy.svg)](https://github.com/xmrig/xmrig-proxy/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/xmrig/xmrig-proxy.svg)](https://github.com/xmrig/xmrig-proxy/network)
+# XXXig Proxy（无捐献 改造版）
 
-This is an extremely high-performance proxy for the CryptoNote stratum protocol (including Monero and others).
-It can efficiently manage over 100K connections on an inexpensive, low-memory virtual machine (with just 1024 MB of RAM).
-The proxy significantly reduces the number of connections to the pool, decreasing 100,000 workers down to just 391 on the pool side.
-The codebase is shared with the [XMRig](https://github.com/xmrig/xmrig) miner.
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
-## Compatibility
-Compatible with any pool and any miner that supports NiceHash.
+本项目基于 [XMRig Proxy](https://github.com/xmrig/xmrig-proxy) 改造：
 
-## Why?
-This proxy is designed to handle donation traffic from XMRig. No other solution works well with high connection and disconnection rates.
+**彻底移除内置开发者捐献（dev-fee）**——原版默认抽取 2% 算力捐给作者矿池（在转发超过 256 个矿工时生效），本版已从源码层面删除，代理 **不再向作者钱包分流任何算力**。
 
-## Download
-* Binary releases: https://github.com/xmrig/xmrig-proxy/releases
-* Git tree: https://github.com/xmrig/xmrig-proxy.git
-  * Clone with `git clone https://github.com/xmrig/xmrig-proxy.git` :hammer: [Build instructions](https://xmrig.com/docs/proxy).
-  
-## Usage
-:boom: If you are using Linux and need to manage over **1000 connections**, you must [increase the limits on open files](https://github.com/xmrig/xmrig-proxy/wiki/Ubuntu-setup).
-  
-### Options
-```
-Network:
-  -o, --url=URL                 URL of mining server
-  -a, --algo=ALGO               mining algorithm https://xmrig.com/docs/algorithms
-      --coin=COIN               specify coin instead of algorithm
-  -u, --user=USERNAME           username for mining server
-  -p, --pass=PASSWORD           password for mining server
-  -O, --userpass=U:P            username:password pair for mining server
-  -x, --proxy=HOST:PORT         connect through a SOCKS5 proxy
-  -k, --keepalive               send keepalived packet for prevent timeout (needs pool support)
-      --rig-id=ID               rig identifier for pool-side statistics (needs pool support)
-      --tls                     enable SSL/TLS support (needs pool support)
-      --tls-fingerprint=HEX     pool TLS certificate fingerprint for strict certificate pinning
-      --dns-ipv6                prefer IPv6 records from DNS responses
-      --dns-ttl=N               N seconds (default: 30) TTL for internal DNS cache
-      --daemon                  use daemon RPC instead of pool for solo mining
-      --daemon-zmq-port         daemon's zmq-pub port number (only use it if daemon has it enabled)
-      --daemon-poll-interval=N  daemon poll interval in milliseconds (default: 1000)
-      --daemon-job-timeout=N    daemon job timeout in milliseconds (default: 15000)
-      --self-select=URL         self-select block templates from URL
-      --submit-to-origin        also submit solution back to self-select URL
-  -r, --retries=N               number of times to retry before switch to backup server (default: 5)
-  -R, --retry-pause=N           time to pause between retries (default: 5)
-      --user-agent              set custom user-agent string for pool
-      --donate-level=N          donate level, default 0%%
+XXXig Proxy 是一款极高性能的 CryptoNote stratum 协议代理（支持 Monero 等），可在仅 1024 MB 内存的廉价虚拟机上高效管理超过 10 万个连接，把矿池侧的连接数从十万级压缩到数百级。代码库与 [XMRig](https://github.com/xmrig/xmrig) 矿工共享。
 
-Options:
-  -b, --bind=ADDR               bind to specified address, example "0.0.0.0:3333"
-  -m, --mode=MODE               proxy mode, nicehash (default) or simple
-      --custom-diff=N           override pool diff
-      --custom-diff-stats       calculate stats using custom diff shares instead of pool shares
-      --reuse-timeout=N         timeout in seconds for reuse pool connections in simple mode
-      --no-workers              disable per worker statistics
-      --access-password=P       set password to restrict connections to the proxy
-      --no-algo-ext             disable "algo" protocol extension
+## 本改造版特性
 
-API:
-      --api-worker-id=ID        custom worker-id for API
-      --api-id=ID               custom instance ID for API
-      --http-host=HOST          bind host for HTTP API (default: 127.0.0.1)
-      --http-port=N             bind port for HTTP API
-      --http-access-token=T     access token for HTTP API
-      --http-no-restricted      enable full remote access to HTTP API (only if access token set)
+- **零捐献**：删除 `DonateStrategy` 与代理专有的 `DonateSplitter` / `DonateMapper`，清理 `donate-level` / `donate-over-proxy` 配置项、命令行选项，以及 API 的 `donate_level` / `donated` / `hashes_donate` 字段。代理转发核心不受影响。
 
-TLS:
-      --tls-bind=ADDR           bind to specified address with enabled TLS
-      --tls-gen=HOSTNAME        generate TLS certificate for specific hostname
-      --tls-cert=FILE           load TLS certificate chain from a file in the PEM format
-      --tls-cert-key=FILE       load TLS certificate private key from a file in the PEM format
-      --tls-dhparam=FILE        load DH parameters for DHE ciphers from a file in the PEM format
-      --tls-protocols=N         enable specified TLS protocols, example: "TLSv1 TLSv1.1 TLSv1.2 TLSv1.3"
-      --tls-ciphers=S           set list of available ciphers (TLSv1.2 and below)
-      --tls-ciphersuites=S      set list of available TLSv1.3 ciphersuites
+## 兼容性
 
-Logging:
-  -l, --log-file=FILE           log all output to a file
-  -A  --access-log-file=FILE    log all workers access to a file
-      --no-color                disable colored output
-      --verbose                 verbose output
+兼容任意矿池，以及任意支持 NiceHash 协议的矿工。
 
-Misc:
-  -c, --config=FILE             load a JSON-format configuration file
-  -B, --background              run the proxy in the background
-  -V, --version                 output version information and exit
-  -h, --help                    display this help and exit
-      --dry-run                 test configuration and exit
+## 编译
+
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
 ```
 
-## Donations
+原版编译说明见 [XMRig 官方文档](https://xmrig.com/docs/proxy)。
 
-The default donation fee is 2%, which can be reduced to 1% or completely disabled using the `donate-level` option. This fee applies only when you utilize more than 256 miners.
+## 使用
 
-* XMR: `48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzKt52XU5xvqgzYnDK9URnRoJMk1j8nLwEVsaSWJ4fhdUyZijBGUicoD`
+推荐用 [JSON 配置文件](https://xmrig.com/docs/proxy) 配置代理，比命令行更灵活。完整命令行选项见 `./xxxig-proxy --help`。
 
-## Contacts
-* support@xmrig.com
-* [X](https://x.com/xmrig_dev)
+- **代理模式**（`-m, --mode`）：`nicehash`（默认）、`simple`、`extra_nonce`。
+- **绑定地址**（`-b, --bind`）：例如 `0.0.0.0:3333`。
+- :boom: Linux 下若需管理 **1000 以上连接**，请先 [调高打开文件数限制](https://github.com/xmrig/xmrig-proxy/wiki/Ubuntu-setup)。
+
+## 关于捐献
+
+本改造版已彻底移除原版内置的开发者捐献。XMRig 是优秀的开源项目，在此向上游作者致谢；如你愿意支持上游开发，请访问其官方仓库。
+
+## 上游与许可
+
+- 基础项目：[XMRig Proxy](https://github.com/xmrig/xmrig-proxy)（作者 [xmrig](https://github.com/xmrig)、[sech1](https://github.com/SChernykh)）
+- 许可证：[GPL-3.0](LICENSE)

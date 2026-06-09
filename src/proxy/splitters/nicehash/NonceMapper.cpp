@@ -29,12 +29,12 @@
 #include "proxy/splitters/nicehash/NonceMapper.h"
 #include "base/io/log/Log.h"
 #include "base/io/log/Tags.h"
+#include "base/kernel/interfaces/IStrategy.h"
 #include "base/net/stratum/Client.h"
 #include "base/net/stratum/Pools.h"
 #include "core/config/Config.h"
 #include "core/Controller.h"
 #include "net/JobResult.h"
-#include "net/strategies/DonateStrategy.h"
 #include "proxy/Error.h"
 #include "proxy/events/AcceptEvent.h"
 #include "proxy/events/SubmitEvent.h"
@@ -48,10 +48,6 @@ xmrig::NonceMapper::NonceMapper(size_t id, Controller *controller) :
 {
     m_storage  = new NonceStorage();
     m_strategy = controller->config()->pools().createStrategy(this);
-
-    if (controller->config()->pools().donateLevel() > 0) {
-        m_donate = new DonateStrategy(controller, this);
-    }
 }
 
 
@@ -60,7 +56,6 @@ xmrig::NonceMapper::~NonceMapper()
     delete m_pending;
     delete m_strategy;
     delete m_storage;
-    delete m_donate;
 }
 
 
@@ -143,24 +138,13 @@ void xmrig::NonceMapper::submit(SubmitEvent *event)
     JobResult req = event->request;
     req.diff = m_storage->job().diff();
 
-    IStrategy *strategy = m_donate && m_donate->isActive() ? m_donate : m_strategy;
-
-    m_results[strategy->submit(req)] = SubmitCtx(req.id, event->miner()->id());
+    m_results[m_strategy->submit(req)] = SubmitCtx(req.id, event->miner()->id());
 }
 
 
 void xmrig::NonceMapper::tick(uint64_t, uint64_t now)
 {
     m_strategy->tick(now);
-
-    if (m_donate) {
-        m_donate->tick(now);
-
-        if (m_donate->isActive() && m_donate->hasPendingJob() && m_donate->reschedule()) {
-            const auto &pending = m_donate->pending();
-            setJob(pending.host.data(), pending.port, pending.job);
-        }
-    }
 }
 
 
@@ -207,15 +191,6 @@ void xmrig::NonceMapper::onActive(IStrategy *strategy, IClient *client)
 
 void xmrig::NonceMapper::onJob(IStrategy *, IClient *client, const Job &job, const rapidjson::Value &)
 {
-    if (m_donate) {
-        if (m_donate->isActive() && client->id() != -1 && !m_donate->reschedule()) {
-            m_donate->save(client, job);
-            return;
-        }
-
-        m_donate->setAlgo(job.algorithm());
-    }
-
     setJob(client->pool().host(), client->pool().port(), job);
 }
 
@@ -236,11 +211,11 @@ void xmrig::NonceMapper::onPause(IStrategy *)
 }
 
 
-void xmrig::NonceMapper::onResultAccepted(IStrategy *, IClient *client, const SubmitResult &result, const char *error)
+void xmrig::NonceMapper::onResultAccepted(IStrategy *, IClient *, const SubmitResult &result, const char *error)
 {
     const SubmitCtx ctx = submitCtx(result.seq);
 
-    AcceptEvent::start(m_id, ctx.miner, result, client->id() == -1, false, error);
+    AcceptEvent::start(m_id, ctx.miner, result, false, error);
 
     if (!ctx.miner) {
         return;
@@ -283,10 +258,6 @@ void xmrig::NonceMapper::connect()
 {
     m_suspended = 0;
     m_strategy->connect();
-
-    if (m_donate) {
-        m_donate->connect();
-    }
 }
 
 
@@ -307,8 +278,4 @@ void xmrig::NonceMapper::suspend()
     m_storage->setActive(false);
     m_storage->reset();
     m_strategy->stop();
-
-    if (m_donate) {
-        m_donate->stop();
-    }
 }

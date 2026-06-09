@@ -44,7 +44,6 @@ class AccessLog;
 class ApiRouter;
 class BindHost;
 class Controller;
-class DonateSplitter;
 class ISplitter;
 class Login;
 class Miner;
@@ -95,7 +94,6 @@ private:
     ApiRouter *m_api    = nullptr;
     Controller *m_controller;
     CustomDiff m_customDiff;
-    DonateSplitter *m_donate;
     ISplitter *m_splitter;
     Login *m_login;
     Miners *m_miners;

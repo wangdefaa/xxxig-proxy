@@ -40,7 +40,6 @@ namespace xmrig {
 
 
 class Controller;
-class DonateStrategy;
 class IStrategy;
 class JobResult;
 class Miner;
@@ -86,7 +85,6 @@ private:
     bool m_active               = false;
     bool m_dirty                = false;
     Controller *m_controller;
-    DonateStrategy *m_donate    = nullptr;
     IStrategy *m_pending        = nullptr;
     IStrategy *m_strategy;
     Job m_job;

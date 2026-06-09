@@ -38,9 +38,9 @@ namespace xmrig {
 class AcceptEvent : public MinerEvent
 {
 public:
-    static inline bool start(size_t mapperId, Miner *miner, const SubmitResult &result, bool donate, bool customDiff, const char *error = nullptr)
+    static inline bool start(size_t mapperId, Miner *miner, const SubmitResult &result, bool customDiff, const char *error = nullptr)
     {
-        return exec(new (m_buf) AcceptEvent(mapperId, miner, result, donate, customDiff, error));
+        return exec(new (m_buf) AcceptEvent(mapperId, miner, result, customDiff, error));
     }
 
 
@@ -48,7 +48,6 @@ public:
 
 
     inline bool isCustomDiff() const        { return m_customDiff; }
-    inline bool isDonate() const            { return m_donate; }
     inline bool isRejected() const override { return m_error != nullptr; }
     inline const char *error() const        { return m_error; }
     inline size_t mapperId() const          { return m_mapperId; }
@@ -56,11 +55,10 @@ public:
 
 
 protected:
-    inline AcceptEvent(size_t mapperId, Miner *miner, const SubmitResult &result, bool donate, bool customDiff, const char *error)
+    inline AcceptEvent(size_t mapperId, Miner *miner, const SubmitResult &result, bool customDiff, const char *error)
         : MinerEvent(AcceptType, miner),
           result(result),
           m_customDiff(customDiff),
-          m_donate(donate),
           m_error(error),
           m_mapperId(mapperId)
     {}
@@ -68,7 +66,6 @@ protected:
 
 private:
     bool m_customDiff;
-    bool m_donate;
     const char *m_error;
     size_t m_mapperId;
 };

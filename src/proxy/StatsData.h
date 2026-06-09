@@ -77,7 +77,6 @@ public:
         upstreams    += other.upstreams;
         accepted     += other.accepted;
         connections  += other.connections;
-        donateHashes += other.donateHashes;
         expired      += other.expired;
         hashes       += other.hashes;
         invalid      += other.invalid;
@@ -96,7 +95,6 @@ public:
     std::vector<uint16_t> latency;
     uint64_t accepted       = 0;
     uint64_t connections    = 0;
-    uint64_t donateHashes   = 0;
     uint64_t expired        = 0;
     uint64_t hashes         = 0;
     uint64_t invalid        = 0;

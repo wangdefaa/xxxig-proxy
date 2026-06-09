@@ -62,7 +62,6 @@ static struct option const options[] = {
     { "custom-diff",       1, nullptr, IConfig::CustomDiffKey     },
     { "custom-diff-stats", 0, nullptr, IConfig::CustomDiffStatsKey},
     { "debug",             0, nullptr, IConfig::DebugKey          },
-    { "donate-level",      1, nullptr, IConfig::DonateLevelKey    },
     { "keepalive",         2, nullptr, IConfig::KeepAliveKey      },
     { "log-file",          1, nullptr, IConfig::LogFileKey        },
     { "no-color",          0, nullptr, IConfig::ColorKey          },

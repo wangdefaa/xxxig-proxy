@@ -364,6 +364,11 @@ void xmrig::DaemonClient::onTimer(const Timer *)
         connect();
     }
     else if (m_state == ConnectedState) {
+        if (isTari()) {
+            getBlockTemplate();
+            return;
+        }
+
         send((m_apiVersion == API_MONERO) ? kGetHeight : kGetInfo);
     }
 }

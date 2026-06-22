@@ -83,13 +83,23 @@ protected:
 
 private:
     bool isOutdated(uint64_t height, const char *hash) const;
+    bool isTari() const;
+    bool isTariBlob(const String &blob) const;
+    bool jobError(int *code, const char *message) const;
     bool parseJob(const rapidjson::Value &params, int *code);
+    bool parseTariJob(const rapidjson::Value &params, int *code);
     bool parseResponse(int64_t id, const rapidjson::Value &result, const rapidjson::Value &error);
+    bool setTariJobFields(Job &job, const rapidjson::Value &params, int *code) const;
+    bool validateTariJob(const rapidjson::Value &params, const String &blocktemplate, int *code) const;
     int64_t getBlockTemplate();
     int64_t rpcSend(const rapidjson::Document &doc, const std::map<std::string, std::string> &headers = {});
+    int64_t submitBlock(const JobResult &result);
+    void publishTariJob(Job &&job, String &&blocktemplate, const rapidjson::Value &params);
     void retry();
     void send(const char *path);
+    void setCryptoNoteSubmitBlob(char *data, const JobResult &result);
     void setState(SocketState state);
+    void setTariSubmitBlob(char *data, const JobResult &result) const;
 
     enum {
         API_CRYPTONOTE_DEFAULT,

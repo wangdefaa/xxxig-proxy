@@ -36,6 +36,28 @@
 #include "base/crypto/keccak.h"
 
 
+namespace {
+
+
+constexpr size_t kTariReservedOffset = 35;
+
+
+void writeBE32Hex(char *out, uint32_t value)
+{
+    const uint8_t bytes[4] = {
+        static_cast<uint8_t>(value >> 24),
+        static_cast<uint8_t>(value >> 16),
+        static_cast<uint8_t>(value >> 8),
+        static_cast<uint8_t>(value)
+    };
+
+    xmrig::Cvt::toHex(out, 8, bytes, sizeof(bytes));
+}
+
+
+} // namespace
+
+
 xmrig::Job::Job(bool nicehash, const Algorithm &algorithm, const String &clientId) :
     m_algorithm(algorithm),
     m_nicehash(nicehash),
@@ -249,6 +271,7 @@ void xmrig::Job::copy(const Job &other)
 #   ifdef XMRIG_PROXY_PROJECT
     m_rawSeedHash = other.m_rawSeedHash;
     m_rawSigKey   = other.m_rawSigKey;
+    m_tari        = other.m_tari;
 
     memcpy(m_rawBlob, other.m_rawBlob, sizeof(m_rawBlob));
     memcpy(m_rawTarget, other.m_rawTarget, sizeof(m_rawTarget));
@@ -305,6 +328,7 @@ void xmrig::Job::move(Job &&other)
 #   ifdef XMRIG_PROXY_PROJECT
     m_rawSeedHash = std::move(other.m_rawSeedHash);
     m_rawSigKey   = std::move(other.m_rawSigKey);
+    m_tari        = other.m_tari;
 
     memcpy(m_rawBlob, other.m_rawBlob, sizeof(m_rawBlob));
     memcpy(m_rawTarget, other.m_rawTarget, sizeof(m_rawTarget));
@@ -372,7 +396,18 @@ void xmrig::Job::setViewTagInMinerTx(uint8_t view_tag)
 
 void xmrig::Job::setExtraNonceInMinerTx(uint32_t extra_nonce)
 {
+    if (m_tari) {
+        setTariExtraNonce(extra_nonce);
+        return;
+    }
+
     memcpy(m_minerTxPrefix.data() + m_minerTxExtraNonceOffset, &extra_nonce, std::min(m_minerTxExtraNonceSize, sizeof(uint32_t)));
+}
+
+
+void xmrig::Job::setTariExtraNonce(uint32_t extra_nonce)
+{
+    writeBE32Hex(m_rawBlob + kTariReservedOffset * 2, extra_nonce);
 }
 
 
@@ -402,6 +437,11 @@ void xmrig::Job::generateSignatureData(String &signatureData, uint8_t& view_tag)
 
 void xmrig::Job::generateHashingBlob(String &blob) const
 {
+    if (m_tari) {
+        blob = rawBlob();
+        return;
+    }
+
     uint8_t root_hash[32];
     const uint8_t* p = m_minerTxPrefix.data();
     BlockTemplate::calculateRootHash(p, p + m_minerTxPrefix.size(), m_minerTxMerkleTreeBranch, m_minerTxMerkleTreePath, root_hash);

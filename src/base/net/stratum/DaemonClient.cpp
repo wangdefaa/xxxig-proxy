@@ -71,14 +71,30 @@ static const char *kGetInfo                 = "/getinfo";
 static const char *kHash                    = "hash";
 static const char *kHeight                  = "height";
 static const char *kJsonRPC                 = "/json_rpc";
+static const char *kReservedOffset          = "reserved_offset";
 
 static constexpr size_t kBlobReserveSize    = 8;
+static constexpr size_t kTariBlobSize       = 76;
+static constexpr size_t kTariNonceOffset    = 39;
+static constexpr size_t kTariReservedOffset = 35;
 
 static const char kZMQGreeting[64] = { static_cast<char>(-1), 0, 0, 0, 0, 0, 0, 0, 0, 127, 3, 0, 'N', 'U', 'L', 'L' };
 static constexpr size_t kZMQGreetingSize1 = 11;
 
 static const char kZMQHandshake[] = "\4\x19\5READY\xbSocket-Type\0\0\0\3SUB";
 static const char kZMQSubscribe[] = "\0\x18\1json-minimal-chain_main";
+
+static void writeBE32Hex(char *out, uint32_t value)
+{
+    const uint8_t bytes[4] = {
+        static_cast<uint8_t>(value >> 24),
+        static_cast<uint8_t>(value >> 16),
+        static_cast<uint8_t>(value >> 8),
+        static_cast<uint8_t>(value)
+    };
+
+    Cvt::toHex(out, 8, bytes, sizeof(bytes));
+}
 
 } // namespace xmrig
 
@@ -137,7 +153,14 @@ int64_t xmrig::DaemonClient::submit(const JobResult &result)
     }
 
     char *data = m_blocktemplateStr.data();
+    isTari() ? setTariSubmitBlob(data, result) : setCryptoNoteSubmitBlob(data, result);
 
+    return submitBlock(result);
+}
+
+
+void xmrig::DaemonClient::setCryptoNoteSubmitBlob(char *data, const JobResult &result)
+{
     const size_t sig_offset = m_job.nonceOffset() + m_job.nonceSize();
 
 #   ifdef XMRIG_PROXY_PROJECT
@@ -168,7 +191,21 @@ int64_t xmrig::DaemonClient::submit(const JobResult &result)
     }
 
 #   endif
+}
 
+
+void xmrig::DaemonClient::setTariSubmitBlob(char *data, const JobResult &result) const
+{
+    memcpy(data + kTariNonceOffset * 2, result.nonce, 8);
+
+    if (result.extra_nonce >= 0) {
+        writeBE32Hex(data + kTariReservedOffset * 2, static_cast<uint32_t>(result.extra_nonce));
+    }
+}
+
+
+int64_t xmrig::DaemonClient::submitBlock(const JobResult &result)
+{
     using namespace rapidjson;
     Document doc(kObjectType);
 
@@ -210,7 +247,7 @@ void xmrig::DaemonClient::connect()
         m_pool.setAlgo(m_coin.algorithm());
     }
 
-    if ((m_apiVersion == API_MONERO) && !m_walletAddress.isValid()) {
+    if ((m_apiVersion == API_MONERO) && !isTari() && !m_walletAddress.isValid()) {
         return connectError("Invalid wallet address.");
     }
 
@@ -376,8 +413,36 @@ bool xmrig::DaemonClient::isOutdated(uint64_t height, const char *hash) const
 }
 
 
+bool xmrig::DaemonClient::isTari() const
+{
+    return m_coin == Coin::TARI;
+}
+
+
+bool xmrig::DaemonClient::isTariBlob(const String &blob) const
+{
+    uint8_t bin[kTariBlobSize];
+    return blob.size() == kTariBlobSize * 2 && Cvt::fromHex(bin, sizeof(bin), blob.data(), blob.size());
+}
+
+
+bool xmrig::DaemonClient::jobError(int *code, const char *message) const
+{
+    if (!isQuiet()) {
+        LOG_ERR("%s " RED("job error: ") RED_BOLD("\"%s\""), tag(), message);
+    }
+
+    *code = 1;
+    return false;
+}
+
+
 bool xmrig::DaemonClient::parseJob(const rapidjson::Value &params, int *code)
 {
+    if (isTari()) {
+        return parseTariJob(params, code);
+    }
+
     auto jobError = [this, code](const char *message) {
         if (!isQuiet()) {
             LOG_ERR("%s " RED("job error: ") RED_BOLD("\"%s\""), tag(), message);
@@ -498,6 +563,77 @@ bool xmrig::DaemonClient::parseJob(const rapidjson::Value &params, int *code)
 
     m_listener->onJobReceived(this, m_job, params);
     return true;
+}
+
+
+bool xmrig::DaemonClient::parseTariJob(const rapidjson::Value &params, int *code)
+{
+    String blocktemplate = Json::getString(params, kBlocktemplateBlob);
+    m_blockhashingblob = Json::getString(params, kBlockhashingBlob);
+
+    if (!validateTariJob(params, blocktemplate, code)) {
+        return false;
+    }
+
+    Job job(false, Algorithm::RX_0, String());
+    if (!setTariJobFields(job, params, code)) {
+        return false;
+    }
+
+    publishTariJob(std::move(job), std::move(blocktemplate), params);
+    return true;
+}
+
+
+bool xmrig::DaemonClient::validateTariJob(const rapidjson::Value &params, const String &blocktemplate, int *code) const
+{
+    const auto &reserved = Json::getValue(params, kReservedOffset);
+
+    if (!isTariBlob(blocktemplate)) {
+        return jobError(code, "Invalid Tari block template received from daemon.");
+    }
+
+    if (!reserved.IsNull() && (!reserved.IsUint64() || reserved.GetUint64() != kTariReservedOffset)) {
+        return jobError(code, "Invalid Tari reserved_offset received from daemon.");
+    }
+
+    return isTariBlob(m_blockhashingblob) || jobError(code, "Invalid Tari mining blob received from daemon.");
+}
+
+
+bool xmrig::DaemonClient::setTariJobFields(Job &job, const rapidjson::Value &params, int *code) const
+{
+    job.setAlgorithm(Algorithm::RX_0);
+
+#   ifdef XMRIG_PROXY_PROJECT
+    job.setTari(true);
+#   endif
+
+    if (!job.setBlob(m_blockhashingblob) || !job.setSeedHash(Json::getString(params, "seed_hash"))) {
+        *code = 3;
+        return false;
+    }
+
+    job.setHeight(Json::getUint64(params, kHeight));
+    job.setDiff(Json::getUint64(params, "difficulty"));
+    return true;
+}
+
+
+void xmrig::DaemonClient::publishTariJob(Job &&job, String &&blocktemplate, const rapidjson::Value &params)
+{
+    m_currentJobId = Cvt::toHex(Cvt::randomBytes(4));
+    job.setId(m_currentJobId);
+    m_job = std::move(job);
+    m_blocktemplateStr = std::move(blocktemplate);
+    m_prevHash = Json::getString(params, "prev_hash");
+    m_jobSteadyMs = Chrono::steadyMSecs();
+
+    if (m_state == ConnectingState) {
+        setState(ConnectedState);
+    }
+
+    m_listener->onJobReceived(this, m_job, params);
 }
 
 

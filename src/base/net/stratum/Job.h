@@ -103,6 +103,7 @@ public:
     inline const char *rawTarget() const                { return m_rawTarget; }
     inline const String &rawSeedHash() const            { return m_rawSeedHash; }
     inline const String &rawSigKey() const              { return m_rawSigKey; }
+    inline void setTari(bool enabled)                   { m_tari = enabled; }
 #   endif
 
     static inline uint64_t toDiff(uint64_t target)      { return target ? (0xFFFFFFFFFFFFFFFFULL / target) : 0; }
@@ -124,6 +125,7 @@ public:
     void setMinerTx(const uint8_t* begin, const uint8_t* end, size_t minerTxEphPubKeyOffset, size_t minerTxPubKeyOffset, size_t minerTxExtraNonceOffset, size_t minerTxExtraNonceSize, const Buffer& minerTxMerkleTreeBranch, uint32_t minerTxMerkleTreePath, bool hasViewTag);
     void setViewTagInMinerTx(uint8_t view_tag);
     void setExtraNonceInMinerTx(uint32_t extra_nonce);
+    void setTariExtraNonce(uint32_t extra_nonce);
     void generateSignatureData(String& signatureData, uint8_t& view_tag) const;
     void generateHashingBlob(String& blob) const;
 #   else
@@ -167,6 +169,7 @@ private:
     char m_rawTarget[24]{};
     String m_rawSeedHash;
     String m_rawSigKey;
+    bool m_tari = false;
 
     // Miner signatures
     uint8_t m_spendSecretKey[32]{};
